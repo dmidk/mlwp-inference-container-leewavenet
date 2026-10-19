@@ -1,0 +1,10 @@
+# Directories
+.venv
+.vscode
+.pdm-build
+__pycache__
+storage
+
+# Files
+uv.lock
+.pdm-python

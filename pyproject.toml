@@ -1,0 +1,51 @@
+[project]
+name = "leewavenet"
+version = "0.1.0"
+description = "Code for lee wave detection and characterisation models."
+authors = [
+    {name = "Eleni Briola",email = "elb@dmi.dk"},
+]
+dependencies = [
+    "numpy==1.26.4",
+    "xarray>=2023.5.0",
+    "zarr",
+    "fastai==2.7.14",
+    "torch==2.2.0",
+    "loguru>=0.7.2",
+    "fsspec>=2024.12.0",
+    "s3fs>=2024.12.0",
+]
+requires-python = ">=3.12,<3.13"
+license = {text = "MIT"}
+
+[project.urls]
+Repository = "https://github.com/dmidk/mlwp-inference-container-leewavenet"
+
+[project.scripts]
+leewavenet = "leewavenet.main:main"
+
+[project.optional-dependencies]
+plot = [
+    "cartopy>=0.23",
+    "matplotlib>=3.5.3",
+]
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm]
+distribution = true
+
+# Keep black and isort at flake8's default line length of 79.
+[tool.black]
+line-length = 79
+
+[tool.isort]
+profile = "black"
+line_length = 79
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.2",
+]
