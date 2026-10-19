@@ -17,7 +17,7 @@
 - Removed redundant/unnecessary pins: `shapely`, `eccodes`, `torchvision`, `pandas`, `pillow`, `scipy`, `fastcore`, `fastdownload`, `fastprogress`, `scikit-learn`, `netcdf4`, `h5py` — all either transitively satisfied by other dependencies or unused after the `dmidc` removal.
 
 ### Fixed
--
+- Fix LeeWaveNet container exit code after successful inference
 
 ### Added
 - `scripts/download_models.py` — downloads the model `.pkl` files into `storage/models/`, using paths relative to the script itself (portable across machines/checkouts).

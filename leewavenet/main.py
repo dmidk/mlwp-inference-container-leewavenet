@@ -142,7 +142,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    return compute_and_plot_leewaves(
+    compute_and_plot_leewaves(
         source=args.source, destination=args.destination, plot=args.plot
     )
 
