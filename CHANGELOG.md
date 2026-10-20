@@ -11,6 +11,7 @@
 - Fixed the container build and simplified the Dockerfile. [!4](https://gitlab.dmi.dk/nwp/leewavenet/-/merge_requests/4)
 - Made plotting an optional dependency group. [!4](https://gitlab.dmi.dk/nwp/leewavenet/-/merge_requests/4)
 - Verified that models downloaded from Nexus and from Zenodo are byte-identical, and that running the full inference pipeline with each source gives identical predictions (max abs diff = 0 across all output variables).
+- Pin the dependencies in `uv.lock` (the versions in the rc2 image) and build with `uv sync --locked`, so rebuilding the image gives the same versions; removed the unused `pdm.lock`
 
 ### Removed
 - Dropped `dmidc[harmonie-grib]` dependency (no longer used by `read_source.py`).

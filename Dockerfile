@@ -22,14 +22,15 @@ RUN pip install -U pip setuptools wheel
 RUN pip install uv
 
 # copy files
-COPY pyproject.toml README.md /project/
+COPY pyproject.toml uv.lock README.md /project/
 COPY leewavenet/ /project/leewavenet
 COPY scripts/ /project/scripts
 
 # Set working directory
 WORKDIR /project
 
-RUN uv sync --no-dev
+# Install the exact versions in uv.lock; fail if it doesn't match pyproject.toml
+RUN uv sync --locked --no-dev
 
 # Download the .pkl files from Nexus into /project/storage/models
 RUN uv run python scripts/download_models.py
