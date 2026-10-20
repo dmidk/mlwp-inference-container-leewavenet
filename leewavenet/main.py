@@ -73,9 +73,9 @@ def process_time_step(index, ds):
         {
             "upward_air_velocity": da_time,
             "wave_mask": (("y", "x"), wave_mask),
-            "wavelength": (("y", "x"), wl),
-            "orientation": (("y", "x"), orient),
-            "amplitude": (("y", "x"), amp),
+            "wavelength": (("y", "x"), wl, {"units": "km"}),
+            "orientation": (("y", "x"), orient, {"units": "degree"}),
+            "amplitude": (("y", "x"), amp, {"units": "m s-1"}),
         },
         coords={
             "y": ds.y,

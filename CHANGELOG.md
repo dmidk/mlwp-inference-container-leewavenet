@@ -20,6 +20,7 @@
 - Fix LeeWaveNet container exit code after successful inference
 
 ### Added
+- Add `units` to `wavelength` (km), `orientation` (degree) and `amplitude` (m s-1) in the output
 - `scripts/download_models.py` — downloads the model `.pkl` files into `storage/models/`, using paths relative to the script itself (portable across machines/checkouts).
 - `ModelDownloader` abstract base class in `scripts/download_models.py`, with `NexusDownloader` and `ZenodoDownloader` subclasses; `storage_dir` is configurable via the constructor. Defaults to `ZenodoDownloader`.
 - Read and write data directly from and to S3 buckets using fsspec, so it can write to both filesystem and S3 [!3](https://gitlab.dmi.dk/nwp/leewavenet/-/merge_requests/3)
