@@ -53,7 +53,7 @@ def process_time_step(index, ds):
     logger.info("All the models have been loaded!")
 
     print(f"Processing Time Step: {index}")
-    da_time = ds.wz.isel(time=index, pressure=8)
+    da_time = ds.wz.isel(time=index)
 
     print("Segmenting...")
     wave_mask = segmentation(segmentation_model, da_time)
