@@ -2,6 +2,7 @@ import __main__
 import argparse
 import os
 
+import torch
 import xarray as xr
 from fastai.vision.all import load_learner
 from loguru import logger
@@ -38,7 +39,7 @@ def _register_custom_functions():
 # ----------------- Model Utilities ----------------- #
 
 
-def process_time_step(index, ds):
+def process_time_step(index, ds, gpu):
     _register_custom_functions()
 
     # Load models
@@ -46,10 +47,18 @@ def process_time_step(index, ds):
         "Loading the following pkl files: segmentation_model, "
         "wavelength_model, amplitude_model, orientation_model"
     )
-    segmentation_model = load_learner("storage/models/segmentation_model.pkl")
-    wavelength_model = load_learner("storage/models/wavelength_model.pkl")
-    amplitude_model = load_learner("storage/models/amplitude_model.pkl")
-    orientation_model = load_learner("storage/models/orientation_model.pkl")
+    segmentation_model = load_learner(
+        "storage/models/segmentation_model.pkl", cpu=not gpu
+    )
+    wavelength_model = load_learner(
+        "storage/models/wavelength_model.pkl", cpu=not gpu
+    )
+    amplitude_model = load_learner(
+        "storage/models/amplitude_model.pkl", cpu=not gpu
+    )
+    orientation_model = load_learner(
+        "storage/models/orientation_model.pkl", cpu=not gpu
+    )
     logger.info("All the models have been loaded!")
 
     print(f"Processing Time Step: {index}")
@@ -101,12 +110,20 @@ def compute_and_plot_leewaves(
     ds = read_source(source)
     results = []
 
+    # Run on the GPU if there is one. The models were saved with their data
+    # loaders on cuda:0, so cpu=False would crash on a machine without a GPU
+    gpu = torch.cuda.is_available()
+    if gpu:
+        logger.info(f"Running the models on {torch.cuda.get_device_name(0)}")
+    else:
+        logger.info("No GPU found, running the models on the CPU")
+
     if plot:
         # Imported lazily so the plotting stays optional.
         from .plotting import characteristics_plot, segmentation_plot
 
     for i in range(ds.sizes["time"]):
-        leewaves = process_time_step(i, ds)
+        leewaves = process_time_step(i, ds, gpu)
         results.append(leewaves)
 
         if plot:
