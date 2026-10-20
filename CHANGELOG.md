@@ -11,6 +11,7 @@
 - Fixed the container build and simplified the Dockerfile. [!4](https://gitlab.dmi.dk/nwp/leewavenet/-/merge_requests/4)
 - Made plotting an optional dependency group. [!4](https://gitlab.dmi.dk/nwp/leewavenet/-/merge_requests/4)
 - Verified that models downloaded from Nexus and from Zenodo are byte-identical, and that running the full inference pipeline with each source gives identical predictions (max abs diff = 0 across all output variables).
+- Outside detected waves, `amplitude`, `wavelength` and `orientation` are NaN instead of ±inf, and they are stored as float32 (as the models compute them) instead of float64
 
 ### Removed
 - Dropped `dmidc[harmonie-grib]` dependency (no longer used by `read_source.py`).
