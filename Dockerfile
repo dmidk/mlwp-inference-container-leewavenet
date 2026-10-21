@@ -32,7 +32,12 @@ WORKDIR /project
 # Install the exact versions in uv.lock; fail if it doesn't match pyproject.toml
 RUN uv sync --locked --no-dev
 
-# Download the .pkl files from Nexus into /project/storage/models
+# Stop `uv run` from syncing again: during the build it would add the dev dependencies,
+# and at start-up it would rebuild the package,
+# which needs PyPI and fails without network access.
+ENV UV_NO_SYNC=1
+
+# Download the .pkl files from Zenodo into /project/storage/models
 RUN uv run python scripts/download_models.py
 
 # Set the entry point. Arguments given to `podman run` are passed
