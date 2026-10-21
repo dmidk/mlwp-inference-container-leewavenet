@@ -268,8 +268,8 @@ Do not share a folder as `/project/storage`. The models live in
 `/project/storage/models` inside the image, and sharing that folder would
 hide them.
 
-To use the GPU, add `--device nvidia.com/gpu=all`. Without it the model
-runs on the CPU.
+To use the GPU, add `--device nvidia.com/gpu=all`. LeeWaveNet uses the GPU
+when there is one and the CPU otherwise; the log says which.
 
 ### Publishing to ghcr.io
 
