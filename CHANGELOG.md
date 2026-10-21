@@ -11,6 +11,7 @@
 - Fixed the container build and simplified the Dockerfile. [!4](https://gitlab.dmi.dk/nwp/leewavenet/-/merge_requests/4)
 - Made plotting an optional dependency group. [!4](https://gitlab.dmi.dk/nwp/leewavenet/-/merge_requests/4)
 - Verified that models downloaded from Nexus and from Zenodo are byte-identical, and that running the full inference pipeline with each source gives identical predictions (max abs diff = 0 across all output variables).
+- Run the models on the GPU when one is available, otherwise on the CPU
 
 ### Removed
 - Dropped `dmidc[harmonie-grib]` dependency (no longer used by `read_source.py`).
@@ -18,6 +19,7 @@
 
 ### Fixed
 - Fix LeeWaveNet container exit code after successful inference
+- Run the container without network access: `uv run` no longer re-syncs the environment on start-up, and the dev dependencies are no longer installed in the image
 - Select the 700 hPa level by value instead of by position; on zarr-creator's IG stores position 8 is 500 hPa
 
 ### Added
