@@ -4,9 +4,13 @@ import fsspec
 import xarray as xr
 from loguru import logger
 
+# The models take the vertical velocity at this pressure level
+PRESSURE_LEVEL_HPA = 700
+
 
 def read_source(source, storage_options=None):
-    """Open a Zarr dataset from any fsspec-supported location.
+    """Open a Zarr dataset from any fsspec-supported location and select
+    the pressure level the models take (`PRESSURE_LEVEL_HPA`).
 
     `source` can be a local path
     (e.g. "storage/ig-recent/pressure_levels.zarr")
@@ -19,7 +23,15 @@ def read_source(source, storage_options=None):
     mapper = fsspec.get_mapper(source, **(storage_options or {}))
     ds = xr.open_zarr(mapper)
 
-    # Rename variables for compatibility but not physically sound
+    # zarr-creator stores the vertical velocity as `tw` (GRIB2 0/2/9, m s-1);
+    # the models call it `wz`
     ds = ds.rename({"tw": "wz"})
 
-    return ds
+    # Select the level by value, so the order of the levels doesn't matter
+    try:
+        return ds.sel(pressure=PRESSURE_LEVEL_HPA)
+    except KeyError:
+        raise ValueError(
+            f"The input has no {PRESSURE_LEVEL_HPA} hPa level, only "
+            f"{ds['pressure'].values.tolist()}"
+        ) from None

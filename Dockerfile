@@ -31,6 +31,11 @@ WORKDIR /project
 
 RUN uv sync --no-dev
 
+# Stop `uv run` from syncing again: during the build it would add the dev dependencies,
+# and at start-up it would rebuild the package,
+# which needs PyPI and fails without network access.
+ENV UV_NO_SYNC=1
+
 # Download the .pkl files from Nexus into /project/storage/models
 RUN uv run python scripts/download_models.py
 
