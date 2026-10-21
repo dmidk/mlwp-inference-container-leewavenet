@@ -36,7 +36,7 @@ RUN uv sync --no-dev
 # which needs PyPI and fails without network access.
 ENV UV_NO_SYNC=1
 
-# Download the .pkl files from Nexus into /project/storage/models
+# Download the .pkl files from Zenodo into /project/storage/models
 RUN uv run python scripts/download_models.py
 
 # Set the entry point. Arguments given to `podman run` are passed
