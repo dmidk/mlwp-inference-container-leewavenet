@@ -40,6 +40,7 @@ def _register_custom_functions():
 
 # ----------------- Model Utilities ----------------- #
 
+
 def load_models(gpu):
     """Load the four LeeWaveNet models once per inference run."""
     _register_custom_functions()
@@ -67,6 +68,7 @@ def load_models(gpu):
     logger.info("All the models have been loaded!")
     return models
 
+
 def process_time_step(index, ds, models):
     """Process one time step using the preloaded models."""
 
@@ -86,7 +88,9 @@ def process_time_step(index, ds, models):
     wl = np.where(waves, wavelength(models["wavelength"], da_time), np.nan)
 
     print("Computing orientation...")
-    orient = np.where(waves, orientation(models["orientation"], da_time), np.nan)
+    orient = np.where(
+        waves, orientation(models["orientation"], da_time), np.nan
+    )
 
     print("Finished Time Step")
 
@@ -129,7 +133,7 @@ def compute_and_plot_leewaves(
         logger.info(f"Running the models on {torch.cuda.get_device_name(0)}")
     else:
         logger.info("No GPU found, running the models on the CPU")
-    
+
     # Load all four models once and reuse them for every time step.
     models = load_models(gpu)
 
