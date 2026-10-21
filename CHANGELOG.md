@@ -14,6 +14,8 @@
 - Run the models on the GPU when one is available, otherwise on the CPU
 - Outside detected waves, `amplitude`, `wavelength` and `orientation` are NaN instead of ±inf, and they are stored as float32 (as the models compute them) instead of float64
 - Improved inference efficiency by loading the four LeeWaveNet models once per run instead of reloading them for every time step.
+- Updated outdated Nexus references to Zenodo to reflect the current model download source.
+- Pin the dependencies in `uv.lock` (the versions in the rc2 image) and build with `uv sync --locked`, so rebuilding the image gives the same versions; removed the unused `pdm.lock`
 
 ### Removed
 - Dropped `dmidc[harmonie-grib]` dependency (no longer used by `read_source.py`).
@@ -23,9 +25,11 @@
 - Fix LeeWaveNet container exit code after successful inference
 - Run the container without network access: `uv run` no longer re-syncs the environment on start-up, and the dev dependencies are no longer installed in the image
 - Select the 700 hPa level by value instead of by position; on zarr-creator's IG stores position 8 is 500 hPa
+- `--plot` works in the container: the image includes the `plot` extra and the Natural Earth coastlines, and each figure is freed after it is saved
 
 ### Added
 - Add `units` to `wavelength` (km), `orientation` (degree) and `amplitude` (m s-1) in the output
 - `scripts/download_models.py` — downloads the model `.pkl` files into `storage/models/`, using paths relative to the script itself (portable across machines/checkouts).
 - `ModelDownloader` abstract base class in `scripts/download_models.py`, with `NexusDownloader` and `ZenodoDownloader` subclasses; `storage_dir` is configurable via the constructor. Defaults to `ZenodoDownloader`.
 - Read and write data directly from and to S3 buckets using fsspec, so it can write to both filesystem and S3 [!3](https://gitlab.dmi.dk/nwp/leewavenet/-/merge_requests/3)
+- CI: check on every PR and push to `main` that `uv.lock` matches `pyproject.toml` (`uv lock --check`)
