@@ -40,46 +40,53 @@ def _register_custom_functions():
 
 # ----------------- Model Utilities ----------------- #
 
-
-def process_time_step(index, ds, gpu):
+def load_models(gpu):
+    """Load the four LeeWaveNet models once per inference run."""
     _register_custom_functions()
 
-    # Load models
     logger.debug(
         "Loading the following pkl files: segmentation_model, "
         "wavelength_model, amplitude_model, orientation_model"
     )
-    segmentation_model = load_learner(
-        "storage/models/segmentation_model.pkl", cpu=not gpu
-    )
-    wavelength_model = load_learner(
-        "storage/models/wavelength_model.pkl", cpu=not gpu
-    )
-    amplitude_model = load_learner(
-        "storage/models/amplitude_model.pkl", cpu=not gpu
-    )
-    orientation_model = load_learner(
-        "storage/models/orientation_model.pkl", cpu=not gpu
-    )
+
+    models = {
+        "segmentation": load_learner(
+            "storage/models/segmentation_model.pkl", cpu=not gpu
+        ),
+        "wavelength": load_learner(
+            "storage/models/wavelength_model.pkl", cpu=not gpu
+        ),
+        "amplitude": load_learner(
+            "storage/models/amplitude_model.pkl", cpu=not gpu
+        ),
+        "orientation": load_learner(
+            "storage/models/orientation_model.pkl", cpu=not gpu
+        ),
+    }
+
     logger.info("All the models have been loaded!")
+    return models
+
+def process_time_step(index, ds, models):
+    """Process one time step using the preloaded models."""
 
     print(f"Processing Time Step: {index}")
     da_time = ds.wz.isel(time=index)
 
     print("Segmenting...")
-    wave_mask = segmentation(segmentation_model, da_time)
+    wave_mask = segmentation(models["segmentation"], da_time)
     # The characteristics are only meaningful where there are waves; NaN
     # elsewhere
     waves = wave_mask == 1
 
     print("Computing amplitude...")
-    amp = np.where(waves, amplitude(amplitude_model, da_time), np.nan)
+    amp = np.where(waves, amplitude(models["amplitude"], da_time), np.nan)
 
     print("Computing wavelength...")
-    wl = np.where(waves, wavelength(wavelength_model, da_time), np.nan)
+    wl = np.where(waves, wavelength(models["wavelength"], da_time), np.nan)
 
     print("Computing orientation...")
-    orient = np.where(waves, orientation(orientation_model, da_time), np.nan)
+    orient = np.where(waves, orientation(models["orientation"], da_time), np.nan)
 
     print("Finished Time Step")
 
@@ -122,13 +129,16 @@ def compute_and_plot_leewaves(
         logger.info(f"Running the models on {torch.cuda.get_device_name(0)}")
     else:
         logger.info("No GPU found, running the models on the CPU")
+    
+    # Load all four models once and reuse them for every time step.
+    models = load_models(gpu)
 
     if plot:
         # Imported lazily so the plotting stays optional.
         from .plotting import characteristics_plot, segmentation_plot
 
     for i in range(ds.sizes["time"]):
-        leewaves = process_time_step(i, ds, gpu)
+        leewaves = process_time_step(i, ds, models)
         results.append(leewaves)
 
         if plot:

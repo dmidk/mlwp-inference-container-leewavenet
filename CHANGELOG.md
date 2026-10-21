@@ -13,6 +13,7 @@
 - Verified that models downloaded from Nexus and from Zenodo are byte-identical, and that running the full inference pipeline with each source gives identical predictions (max abs diff = 0 across all output variables).
 - Run the models on the GPU when one is available, otherwise on the CPU
 - Outside detected waves, `amplitude`, `wavelength` and `orientation` are NaN instead of ±inf, and they are stored as float32 (as the models compute them) instead of float64
+- Improved inference efficiency by loading the four LeeWaveNet models once per run instead of reloading them for every time step.
 
 ### Removed
 - Dropped `dmidc[harmonie-grib]` dependency (no longer used by `read_source.py`).
