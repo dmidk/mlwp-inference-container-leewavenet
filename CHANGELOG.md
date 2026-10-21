@@ -14,6 +14,7 @@
 - Run the models on the GPU when one is available, otherwise on the CPU
 - Outside detected waves, `amplitude`, `wavelength` and `orientation` are NaN instead of ±inf, and they are stored as float32 (as the models compute them) instead of float64
 - Updated outdated Nexus references to Zenodo to reflect the current model download source.
+- Pin the dependencies in `uv.lock` (the versions in the rc2 image) and build with `uv sync --locked`, so rebuilding the image gives the same versions; removed the unused `pdm.lock`
 
 ### Removed
 - Dropped `dmidc[harmonie-grib]` dependency (no longer used by `read_source.py`).
