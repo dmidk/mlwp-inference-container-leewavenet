@@ -2,7 +2,9 @@ import __main__
 import argparse
 import os
 
+import numpy as np
 import torch
+
 import xarray as xr
 from fastai.vision.all import load_learner
 from loguru import logger
@@ -66,15 +68,18 @@ def process_time_step(index, ds, gpu):
 
     print("Segmenting...")
     wave_mask = segmentation(segmentation_model, da_time)
+    # The characteristics are only meaningful where there are waves; NaN
+    # elsewhere
+    waves = wave_mask == 1
 
     print("Computing amplitude...")
-    amp = amplitude(amplitude_model, da_time) / wave_mask
+    amp = np.where(waves, amplitude(amplitude_model, da_time), np.nan)
 
     print("Computing wavelength...")
-    wl = wavelength(wavelength_model, da_time) / wave_mask
+    wl = np.where(waves, wavelength(wavelength_model, da_time), np.nan)
 
     print("Computing orientation...")
-    orient = orientation(orientation_model, da_time) / wave_mask
+    orient = np.where(waves, orientation(orientation_model, da_time), np.nan)
 
     print("Finished Time Step")
 
