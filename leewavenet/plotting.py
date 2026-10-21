@@ -1,4 +1,5 @@
 import datetime
+import gc
 
 import cartopy.crs as ccrs
 import matplotlib.colors as colours
@@ -61,6 +62,12 @@ def quiver_orient(dataset, coords, sep=32):
     alt_dataframe["-orient_v"] = (("y", "x"), -np.sin(angle_rad2))
 
     return alt_dataframe
+
+
+def _close_figure(fig):
+    """Free a figure's memory."""
+    plt.close(fig)
+    gc.collect()
 
 
 def characteristics_plot(leewaves, destination, plot):
@@ -257,6 +264,7 @@ def characteristics_plot(leewaves, destination, plot):
     save_figure(fig, destination, filename)
     if plot:
         plt.show()
+    _close_figure(fig)
 
 
 def segmentation_plot(leewaves, destination, plot):
@@ -327,3 +335,4 @@ def segmentation_plot(leewaves, destination, plot):
     save_figure(fig, destination, filename)
     if plot:
         plt.show()
+    _close_figure(fig)
