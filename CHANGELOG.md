@@ -18,6 +18,7 @@
 
 ### Fixed
 - Fix LeeWaveNet container exit code after successful inference
+- Run the container without network access: `uv run` no longer re-syncs the environment on start-up, and the dev dependencies are no longer installed in the image
 
 ### Added
 - `scripts/download_models.py` — downloads the model `.pkl` files into `storage/models/`, using paths relative to the script itself (portable across machines/checkouts).
