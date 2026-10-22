@@ -1,22 +1,19 @@
-# Use Pytorch base image from DockerHub
-#FROM dockerhub.dmi.dk/anibali/pytorch
-FROM docker.io/pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
+# uv installs torch together with its CUDA libraries (the nvidia-* packages
+# in uv.lock), so the image needs only Python; a PyTorch base image would
+# add a second, unused torch.
+FROM docker.io/library/python:3.12-slim
 
 # Links the published image to its repository on ghcr.io.
 LABEL org.opencontainers.image.source="https://github.com/dmidk/mlwp-inference-container-leewavenet"
 LABEL org.opencontainers.image.description="LeeWaveNet inference container for DMI MLWP"
 
-ENV DEBIAN_FRONTEND=noninteractive
+# Kept from the former pytorch/pytorch base image: they tell the NVIDIA
+# container runtime to give the container the GPU driver.
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
 
 USER 0
-
-RUN apt-get update -y && \
-    apt-get install -y \
-    build-essential \
-    libgeos-dev \
-    libeccodes-dev \
-    libeccodes-tools \
-  && rm -rf /var/lib/apt/lists/*
 
 RUN pip install -U pip setuptools wheel
 RUN pip install uv
@@ -29,7 +26,17 @@ COPY scripts/ /project/scripts
 # Set working directory
 WORKDIR /project
 
-# Install the exact versions in uv.lock; fail if it doesn't match pyproject.toml
+# Install the exact versions in uv.lock; fail if it doesn't match pyproject.toml.
+# Done in three steps so that no image layer is much larger than ~1 GB:
+# big layers time out when the cluster pulls the image.
+# 1) everything except the largest packages
+RUN uv sync --locked --no-dev --extra plot --no-install-project \
+    --no-install-package torch --no-install-package triton \
+    --no-install-package nvidia-cudnn-cu12 --no-install-package nvidia-cublas-cu12
+# 2) the two largest CUDA libraries
+RUN uv sync --locked --no-dev --extra plot --no-install-project \
+    --no-install-package torch --no-install-package triton
+# 3) torch, triton and the leewavenet package
 RUN uv sync --locked --no-dev --extra plot
 
 # Stop `uv run` from syncing again: during the build it would add the dev dependencies,
