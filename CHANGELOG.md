@@ -16,6 +16,7 @@
 - Improved inference efficiency by loading the four LeeWaveNet models once per run instead of reloading them for every time step.
 - Updated outdated Nexus references to Zenodo to reflect the current model download source.
 - Pin the dependencies in `uv.lock` (the versions in the rc2 image) and build with `uv sync --locked`, so rebuilding the image gives the same versions; removed the unused `pdm.lock`
+- Build the image on `python:3.12-slim` instead of `pytorch/pytorch`, whose conda PyTorch was unused (uv installs torch and its CUDA libraries from `uv.lock`), and drop the unneeded apt packages: the image shrinks from 14.9 GB to 6.9 GB (8.2 GB to 4.2 GB compressed). `uv sync` runs in three steps so that no layer is larger than ~1.3 GB compressed
 
 ### Removed
 - Dropped `dmidc[harmonie-grib]` dependency (no longer used by `read_source.py`).
