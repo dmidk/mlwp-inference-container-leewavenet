@@ -27,6 +27,7 @@
 - Run the container without network access: `uv run` no longer re-syncs the environment on start-up, and the dev dependencies are no longer installed in the image
 - Select the 700 hPa level by value instead of by position; on zarr-creator's IG stores position 8 is 500 hPa
 - `--plot` works in the container: the image includes the `plot` extra and the Natural Earth coastlines, and each figure is freed after it is saved
+- Running on a GPU crashed with `AttributeError: device`: the models were saved with an older fastai, and `load_learner` sets the data loaders' device only for the CPU; it's now set for the GPU too
 
 ### Added
 - Add `units` to `wavelength` (km), `orientation` (degree) and `amplitude` (m s-1) in the output

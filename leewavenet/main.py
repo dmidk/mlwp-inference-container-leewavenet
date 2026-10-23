@@ -65,6 +65,13 @@ def load_models(gpu):
         ),
     }
 
+    # The models were pickled with an older fastai, whose data loaders lack
+    # the `_device` that fastai 2.7.14 reads. load_learner sets it only with
+    # cpu=True (through dls.cpu()), so set it here for the GPU
+    if gpu:
+        for learner in models.values():
+            learner.dls.cuda()
+
     logger.info("All the models have been loaded!")
     return models
 
