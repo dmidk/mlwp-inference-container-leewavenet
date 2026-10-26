@@ -1,0 +1,147 @@
+# Build the inference image (x86_64) on every pull request and every push to
+# main, and publish it to ghcr.io for `v*` tags (as `<tag>` and `latest`).
+#
+# The model .pkl files come from Zenodo record 23296247. The Dockerfile
+# downloads them during the build with scripts/download_models.py, which
+# can't read a record while it's a draft. The "Check the models" step says so
+# up front instead of letting the build fail after installing torch.
+name: Build Container
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: >-
+    ghcr.io/${{ github.repository_owner
+    }}/mlwp-inference-container-leewavenet
+
+jobs:
+  build:
+    name: Build image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - &free-disk-space
+        name: Free disk space (torch, the CUDA libraries and the models are
+          large)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          swap-storage: true
+
+      - &check-models
+        name: Check the models
+        # The record id and the file names come from the download script, so
+        # this checks whatever the build will actually ask Zenodo for.
+        run: |
+          record=$(sed -n \
+            's#.*zenodo\.org/api/records/\([0-9]\{1,\}\)/files.*#\1#p' \
+            scripts/download_models.py)
+          files=$(sed -n 's/^ *"\([a-z_]*_model\.pkl\)",$/\1/p' \
+            scripts/download_models.py)
+          if [ -z "$record" ] || [ -z "$files" ]; then
+            echo "::error::can't find the Zenodo record id or the model" \
+              "file names in scripts/download_models.py"
+            exit 1
+          fi
+          for file in $files; do
+            url="https://zenodo.org/api/records/$record/files/$file/content"
+            if ! curl -sfIL --connect-timeout 30 --retry 2 --retry-delay 10 \
+              --retry-all-errors -o /dev/null "$url"; then
+              echo "::error::can't download the model $url (is the Zenodo" \
+                "record published?)"
+              exit 1
+            fi
+          done
+          echo "Zenodo record $record has every model the build needs"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  publish:
+    name: Publish image
+    needs: build
+    if: >-
+      github.repository_owner == 'dmidk'
+      && github.event_name == 'push'
+      && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - *free-disk-space
+
+      - *check-models
+
+      - name: Check the tag against the version
+        # The version tag should match the version in pyproject.toml, so a
+        # published image can be traced back to the code it was built from.
+        run: |
+          version=$(python3 -c 'import tomllib; print(tomllib.load(
+            open("pyproject.toml", "rb"))["project"]["version"])')
+          if [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
+            echo "::error::the tag $GITHUB_REF_NAME doesn't match the" \
+              "version $version in pyproject.toml"
+            exit 1
+          fi
+          echo "leewavenet version $version"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest
+
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
