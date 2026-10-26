@@ -35,3 +35,4 @@
 - `ModelDownloader` abstract base class in `scripts/download_models.py`, with `NexusDownloader` and `ZenodoDownloader` subclasses; `storage_dir` is configurable via the constructor. Defaults to `ZenodoDownloader`.
 - Read and write data directly from and to S3 buckets using fsspec, so it can write to both filesystem and S3 [!3](https://gitlab.dmi.dk/nwp/leewavenet/-/merge_requests/3)
 - CI: check on every PR and push to `main` that `uv.lock` matches `pyproject.toml` (`uv lock --check`)
+- CI: build the container image on every PR and push to `main`, and publish it to `ghcr.io/dmidk/mlwp-inference-container-leewavenet` when a Git tag is pushed (image tag = Git tag, e.g. `rc5`). Before the build starts it checks that every model file can be downloaded from the Zenodo record in `scripts/download_models.py`

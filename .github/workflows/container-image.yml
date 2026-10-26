@@ -1,0 +1,217 @@
+# Build the LeeWaveNet inference container on:
+#   - Every pull request
+#   - Every push to main
+#   - Every new Git tag
+#
+# Publish the container to GHCR only when a new Git tag is pushed.
+#
+# Examples:
+#   Git tag: rc5
+#   Image: ghcr.io/dmidk/mlwp-inference-container-leewavenet:rc5
+#
+#   Git tag: v1.0.0
+#   Image: ghcr.io/dmidk/mlwp-inference-container-leewavenet:v1.0.0
+#
+# The Dockerfile downloads the LeeWaveNet model files (.pkl) from
+# Zenodo during the build. We check that these files are accessible
+# before starting the potentially expensive Docker build.
+
+name: Build and Publish LeeWaveNet Container
+
+# ------------------------------------------------------------
+# Workflow triggers
+# ------------------------------------------------------------
+on:
+  push:
+    branches:
+      - main
+
+    # Trigger on EVERY new Git tag, regardless of naming convention.
+    # Examples: rc5, rc6, v1.0.0, 1.0.0
+    tags:
+      - "*"
+
+  # Build on pull requests, but do not publish.
+  pull_request:
+
+  # Allow manually triggering a build from GitHub Actions.
+  # Manual builds do not publish.
+  workflow_dispatch:
+
+# Default permissions.
+# Individual jobs can request additional permissions.
+permissions:
+  contents: read
+
+# Container registry and image name.
+env:
+  IMAGE: ghcr.io/dmidk/mlwp-inference-container-leewavenet
+
+jobs:
+  build:
+    name: Build and optionally publish image
+    runs-on: ubuntu-latest
+
+    # Read repository content and allow pushing images to GHCR.
+    # Publishing is additionally restricted to Git tag pushes below.
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # --------------------------------------------------------
+      # 1. Check out the repository
+      # --------------------------------------------------------
+      # For tag-triggered workflows, this checks out the commit
+      # associated with the Git tag.
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      # --------------------------------------------------------
+      # 2. Free disk space
+      # --------------------------------------------------------
+      # LeeWaveNet uses PyTorch, CUDA dependencies and model files.
+      # These can require significant disk space during the build.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          swap-storage: true
+
+      # --------------------------------------------------------
+      # 3. Check Zenodo model availability
+      # --------------------------------------------------------
+      # The Dockerfile downloads the .pkl models from Zenodo.
+      #
+      # Before building, check that all required files are available.
+      # This avoids spending time installing PyTorch and other
+      # dependencies only to fail because a model is unavailable.
+      #
+      # The Zenodo record ID and model filenames are extracted from
+      # scripts/download_models.py to avoid duplicating configuration.
+      - name: Check the models
+        shell: bash
+        run: |
+          # Extract the Zenodo record ID.
+          record=$(sed -n \
+            's#.*zenodo\.org/api/records/\([0-9]\{1,\}\)/files.*#\1#p' \
+            scripts/download_models.py)
+
+          # Extract the required model filenames.
+          files=$(sed -n \
+            's/^ *"\([a-z_]*_model\.pkl\)",$/\1/p' \
+            scripts/download_models.py)
+
+          # Fail if the record ID or filenames cannot be identified.
+          if [ -z "$record" ] || [ -z "$files" ]; then
+            echo "::error::Cannot find Zenodo record ID or model files"
+            exit 1
+          fi
+
+          # Check that each model file is publicly accessible.
+          for file in $files; do
+            url="https://zenodo.org/api/records/$record/files/$file/content"
+
+            echo "Checking model: $file"
+
+            if ! curl -sfIL \
+              --connect-timeout 30 \
+              --retry 2 \
+              --retry-delay 10 \
+              --retry-all-errors \
+              -o /dev/null "$url"; then
+
+              echo "::error::Cannot download model: $url"
+              exit 1
+            fi
+          done
+
+          echo "All required Zenodo models are available"
+
+      # --------------------------------------------------------
+      # 4. Set up Docker Buildx
+      # --------------------------------------------------------
+      # Buildx supports Docker builds with caching.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # --------------------------------------------------------
+      # 5. Authenticate with GHCR
+      # --------------------------------------------------------
+      # Log in only when:
+      #   - The event is a push
+      #   - The pushed reference is a Git tag
+      #   - The workflow runs in the official DMI repository
+      #
+      # GITHUB_TOKEN is provided automatically by GitHub Actions.
+      # No personal access token is required.
+      - name: Log in to GitHub Container Registry
+        if: >-
+          github.event_name == 'push' &&
+          startsWith(github.ref, 'refs/tags/') &&
+          github.repository == 'dmidk/mlwp-inference-container-leewavenet'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # --------------------------------------------------------
+      # 6. Generate container image tags
+      # --------------------------------------------------------
+      # Use the Git tag as the Docker image tag.
+      #
+      # Examples:
+      #   rc5    -> ghcr.io/dmidk/mlwp-inference-container-leewavenet:rc5
+      #   rc6    -> ghcr.io/dmidk/mlwp-inference-container-leewavenet:rc6
+      #   v1.0.0 -> ghcr.io/dmidk/mlwp-inference-container-leewavenet:v1.0.0
+      #
+      # We intentionally do not update "latest" automatically.
+      # This prevents release candidates from becoming "latest".
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          flavor: latest=false
+          tags: |
+            type=ref,event=tag
+
+      # --------------------------------------------------------
+      # 7. Build and optionally push the container
+      # --------------------------------------------------------
+      # This is the ONLY Docker build step.
+      #
+      # Behavior:
+      #   Pull request       -> Build only
+      #   Push to main       -> Build only
+      #   Manual execution   -> Build only
+      #   Push a Git tag     -> Build AND push to GHCR
+      #
+      # The push happens only after a successful build.
+      #
+      # GitHub Actions cache is used to avoid rebuilding unchanged
+      # layers, potentially reducing build time.
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+
+          # Publish only for tag pushes in the official repository.
+          push: >-
+            ${{ github.event_name == 'push' &&
+                startsWith(github.ref, 'refs/tags/') &&
+                github.repository == 'dmidk/mlwp-inference-container-leewavenet' }}
+
+          # Image tags and OCI labels generated above.
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+          # Reuse cached Docker layers between builds.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
