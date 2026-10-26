@@ -271,50 +271,95 @@ hide them.
 To use the GPU, add `--device nvidia.com/gpu=all`. LeeWaveNet uses the GPU
 when there is one and the CPU otherwise; the log says which.
 
-### Publishing to ghcr.io
+## Publishing to ghcr.io
 
-Test the image locally first. When it works, publish it to the GitHub
-Container Registry so it can be deployed to the development environment.
+The LeeWaveNet inference container is automatically built and published to
+GitHub Container Registry (GHCR) using GitHub Actions.
 
-The image lives at:
+The workflow is defined in `.github/workflows/container-image.yml`.
+
+### Automated builds and publishing
+
+The workflow runs on the following events:
+
+| Event | Build container | Push to GHCR |
+|---|---|---|
+| Pull request | Yes | No |
+| Push to `main` | Yes | No |
+| New Git tag | Yes | Yes |
+| Manual workflow dispatch | Yes | No |
+
+When a new Git tag is pushed, GitHub Actions automatically:
+
+1. Checks out the repository at the tagged commit.
+2. Verifies that the required LeeWaveNet model files are available on Zenodo.
+3. Builds the container using the Dockerfile.
+4. Authenticates with GHCR using the automatically generated `GITHUB_TOKEN`.
+5. Publishes the container using the Git tag as the image tag.
+
+No manual Docker build, personal access token, or manual push to GHCR is required.
+
+### Publishing a new release
+
+To publish a new container version, create and push a Git tag.
+
+For example, to publish `rc5`:
+
+```bash
+# Switch to main and get the latest changes
+git checkout main
+git pull origin main
+
+# Create a new release tag
+git tag rc5
+
+# Push the tag to GitHub
+git push origin rc5
+```
+
+This automatically triggers the GitHub Actions workflow and publishes:
 
 ```text
-ghcr.io/dmidk/mlwp-inference-container-leewavenet
+ghcr.io/dmidk/mlwp-inference-container-leewavenet:rc5
 ```
 
-Log in once with a GitHub personal access token that has the
-`write:packages` scope:
+The container image tag is determined by the Git tag and does not need
+to match the Python package version specified in `pyproject.toml`.
+
+Each release should use a new, unique Git tag.
+
+### Pulling the container
+
+To pull a published container image:
 
 ```bash
-echo "$GHCR_TOKEN" | podman login ghcr.io -u <github-username> --password-stdin
+podman pull ghcr.io/dmidk/mlwp-inference-container-leewavenet:rc5
 ```
 
-Build the image with the registry name, tagging it with both the version
-and `latest`:
+Alternatively, using Docker:
 
 ```bash
-podman build \
-  -t ghcr.io/dmidk/mlwp-inference-container-leewavenet:0.1.0 \
-  -t ghcr.io/dmidk/mlwp-inference-container-leewavenet:latest \
-  .
+docker pull ghcr.io/dmidk/mlwp-inference-container-leewavenet:rc5
 ```
 
-Push both tags:
+Replace `rc5` with the desired published version.
 
-```bash
-podman push ghcr.io/dmidk/mlwp-inference-container-leewavenet:0.1.0
-podman push ghcr.io/dmidk/mlwp-inference-container-leewavenet:latest
+The `latest` tag is not automatically updated by the workflow.
+Use an explicit release tag to ensure reproducible deployments.
+
+### GitHub Actions permissions
+
+The workflow authenticates to GHCR using the automatically generated
+`GITHUB_TOKEN`, with the following permissions:
+
+```yaml
+permissions:
+  contents: read
+  packages: write
 ```
 
-The version tag should match the version in `pyproject.toml`, so a
-deployed image can always be traced back to the code it was built from.
+The repository must also have Write access to the existing GHCR package
+under the package's GitHub Actions access settings.
 
-Anyone can then pull and run the published image:
-
-```bash
-podman pull ghcr.io/dmidk/mlwp-inference-container-leewavenet:latest
-```
-
-A new package is private by default. The first time you push, make the
-package public (or grant access to the right team) under the package
-settings on GitHub, otherwise pulling requires a token.
+No additional personal access token or repository secret is required
+for publishing.
