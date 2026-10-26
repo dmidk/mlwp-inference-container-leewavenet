@@ -1,6 +1,6 @@
 [project]
 name = "leewavenet"
-version = "rc4"
+version = "vrc4"
 description = "Code for lee wave detection and characterisation models."
 authors = [
     {name = "Eleni Briola",email = "elb@dmi.dk"},
