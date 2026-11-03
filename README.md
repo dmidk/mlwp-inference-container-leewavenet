@@ -122,18 +122,66 @@ detected trapped lee waves.
 
 The outputs include:
 
-| Output | Description |
-|---|---|
-| `wave_mask` | Regions where trapped lee waves are detected |
-| `wavelength` | Predicted wavelength of the detected waves |
-| `orientation` | Predicted wave orientation |
-| `amplitude` | Predicted wave amplitude |
+| Output | Units | Description |
+|---|---|---|
+| `wave_mask` | 1 | Regions where trapped lee waves are detected: 0 is `no_lee_wave`, 1 is `lee_wave_detected` |
+| `wavelength` | km | Predicted wavelength of the detected waves |
+| `orientation` | degree | Predicted wave orientation |
+| `amplitude` | m s⁻¹ | Predicted wave amplitude |
+| `upward_air_velocity` | m s⁻¹ | The vertical velocity the models ran on, passed through from the input |
+
+Outside the detected waves, `wavelength`, `orientation` and `amplitude`
+are NaN.
+
+`orientation` is measured anticlockwise from geographic east and the
+model returns an arctangent, so it lies in (-90, 90) degrees and
+describes an **axis**, not a direction: an orientation and that
+orientation plus 180 degrees mean the same thing. The `comment`
+attribute on the variable says so too.
 
 The outputs are written to:
 
 ```text
 s3://ml-model-output/leewavenet/
 ```
+
+### CF metadata
+
+`predictions.zarr` is written as Zarr v3 with
+[CF](https://cfconventions.org/) metadata, so it can be opened and
+interpreted without knowing how LeeWaveNet produced it:
+
+- The root group declares `Conventions = CF-1.8` — the newest version
+  the CF checker validates against. Nothing in the output uses a
+  feature introduced after CF-1.6, so a later declaration would add no
+  information.
+- The HARMONIE-IG grid mapping is carried over from the input and
+  referenced by every prediction variable. Its Lambert Conformal Conic
+  parameters are derived from the input's `crs_wkt`, never written out
+  by hand, so they always describe the grid the predictions are on.
+- `wave_mask` carries `flag_values` and `flag_meanings`; the other
+  predictions carry a `long_name`, `units` and a `comment`. They have
+  no `standard_name`: the CF table has no entry for a lee wave
+  detection or its characteristics, and inventing one would be worse
+  than leaving it out.
+- Missing values are NaN, carried by the Zarr fill value. `_FillValue`
+  is deliberately not written: JSON has no NaN, so it would be stored
+  as an unreadable base64 blob.
+
+`leewavenet/cf_metadata.py` holds all of this. It only sets attributes
+and re-attaches the grid mapping variable — it never touches a
+predicted value.
+
+### Running the tests
+
+```bash
+uv sync
+uv run pytest
+```
+
+The tests build small synthetic datasets in a temporary directory and
+check the written Zarr against the CF conventions, including a run of
+the real `cfchecker`. They need neither the models nor access to S3.
 
 ## Model architecture
 
