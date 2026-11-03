@@ -1,10 +1,9 @@
-import __main__
 import argparse
 import os
 
+import __main__
 import numpy as np
 import torch
-
 import xarray as xr
 from fastai.vision.all import load_learner
 from loguru import logger

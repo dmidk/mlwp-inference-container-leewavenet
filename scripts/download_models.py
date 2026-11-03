@@ -27,7 +27,8 @@ class ModelDownloader(ABC):
         self.storage_dir = Path(storage_dir)
 
     @abstractmethod
-    def url_template(self, filename: str) -> str: ...
+    def url_template(self, filename: str) -> str:
+        ...
 
     def download(self):
         self.storage_dir.mkdir(parents=True, exist_ok=True)
