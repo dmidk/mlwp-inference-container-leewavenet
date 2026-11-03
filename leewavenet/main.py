@@ -1,14 +1,14 @@
-import __main__
 import argparse
 import os
 
+import __main__
 import numpy as np
 import torch
-
 import xarray as xr
 from fastai.vision.all import load_learner
 from loguru import logger
 
+from .cf_metadata import add_cf_metadata
 from .inference import amplitude, orientation, segmentation, wavelength
 from .read_source import read_source
 from .write_output import write_predictions
@@ -157,7 +157,11 @@ def compute_and_plot_leewaves(
             segmentation_plot(leewaves, destination, plot=True)
             characteristics_plot(leewaves, destination, plot=True)
 
+    # The predictions are built from `ds.wz` alone, which leaves the
+    # grid mapping and most of the CF metadata behind; put them back
+    # before writing. This only sets attributes.
     predictions = xr.concat(results, dim="time")
+    predictions = add_cf_metadata(predictions, ds, source_url=source)
     write_predictions(predictions, destination)
 
     return predictions
