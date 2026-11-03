@@ -7,6 +7,7 @@ writing code and then inspect the result both as raw Zarr v3 metadata
 and through `xarray.open_zarr`. They need neither the models nor S3.
 """
 import json
+import os
 
 import numpy as np
 import pytest
@@ -516,13 +517,39 @@ def test_no_reserved_attributes_are_misused(written):
         assert "grid_mapping_name" not in attrs
 
 
+def cf_checker():
+    """The CF checker module, or skip when UDUNITS is missing.
+
+    cfchecker loads UDUNITS-2 through ctypes, so it needs the system
+    `libudunits2` library rather than a wheel, and raises OSError
+    instead of ImportError when it cannot find it.
+
+    Skipping keeps a developer without that library from seeing a
+    confusing failure. CI installs it and sets
+    LEEWAVENET_REQUIRE_CF_CHECKER, which turns the skip into a failure
+    there, so the validation can never quietly stop running.
+    """
+    try:
+        import cfchecker.cfchecks as cfchecks
+    except (ImportError, OSError) as error:
+        message = (
+            f"the CF checker is unavailable ({error}); install the "
+            "libudunits2 system package"
+        )
+        if os.environ.get("LEEWAVENET_REQUIRE_CF_CHECKER"):
+            pytest.fail(message)
+        pytest.skip(message)
+
+    return cfchecks
+
+
 def test_declared_convention_is_one_we_can_check():
     """CF-x.y may only be declared if a checker can validate it.
 
     This is what keeps `CONVENTIONS` honest: raising it without a
     checker that understands that version fails here.
     """
-    cfchecks = pytest.importorskip("cfchecker.cfchecks")
+    cfchecks = cf_checker()
 
     declared = CONVENTIONS.removeprefix("CF-")
     newest = str(cfchecks.newest_version).removeprefix("CF-")
@@ -542,7 +569,7 @@ def test_written_dataset_passes_cf_checker(written, tmp_path):
     it validates is the metadata written to Zarr, unchanged.
     """
     pytest.importorskip("netCDF4")
-    cfchecks = pytest.importorskip("cfchecker.cfchecks")
+    cfchecks = cf_checker()
 
     ds = xr.open_zarr(written)
     netcdf = tmp_path / "predictions.nc"

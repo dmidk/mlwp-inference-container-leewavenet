@@ -183,6 +183,18 @@ The tests build small synthetic datasets in a temporary directory and
 check the written Zarr against the CF conventions, including a run of
 the real `cfchecker`. They need neither the models nor access to S3.
 
+`cfchecker` loads UDUNITS-2 through `ctypes`, so it needs the system
+library as well as the Python package:
+
+```bash
+sudo apt-get install -y libudunits2-0
+```
+
+Without it the two CF checker tests skip with an explanatory message.
+CI installs it and sets `LEEWAVENET_REQUIRE_CF_CHECKER=1`, which turns
+that skip into a failure, so the CF validation cannot quietly stop
+running.
+
 ## Model architecture
 
 LeeWaveNet consists of deep-learning models based on the U-Net

@@ -23,6 +23,14 @@ jobs:
 
       - uses: astral-sh/setup-uv@v10.3.0
 
+      # cfchecker loads UDUNITS-2 through ctypes, so it needs the
+      # system library and not just the Python package. Without it the
+      # CF validation would be skipped rather than run.
+      - name: Install UDUNITS-2
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libudunits2-0
+
       # Install the versions in uv.lock, including the dev group that
       # holds pytest and the CF checker.
       #
@@ -52,5 +60,10 @@ jobs:
             --no-install-package nvidia-nvjitlink-cu12 \
             --no-install-package nvidia-nvtx-cu12
 
+      # LEEWAVENET_REQUIRE_CF_CHECKER turns a missing CF checker into a
+      # failure instead of a skip, so the CF validation cannot quietly
+      # stop running if the UDUNITS install above ever breaks.
       - name: Run the tests
         run: uv run --no-sync pytest -v
+        env:
+          LEEWAVENET_REQUIRE_CF_CHECKER: "1"
