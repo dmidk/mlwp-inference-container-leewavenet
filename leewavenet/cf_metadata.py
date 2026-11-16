@@ -11,6 +11,7 @@ from the `crs_wkt` the source grid definition carries, so the output
 follows the input grid instead of a copy of it that can drift.
 """
 import datetime
+import os
 from importlib.metadata import PackageNotFoundError, version
 
 import numpy as np
@@ -39,6 +40,11 @@ REFERENCES = "https://github.com/dmidk/mlwp-inference-container-leewavenet"
 # The .pkl models come from this Zenodo record. Keep in sync with
 # scripts/download_models.py, which downloads them.
 MODELS_URL = "https://zenodo.org/records/23296247"
+
+# The image the run happened in, baked in by the Dockerfile at build
+# time. Recorded next to `leewavenet_version`, not instead of it: the
+# package version says which code ran, the image tag which artefact.
+IMAGE_ENV_VAR = "LEEWAVENET_IMAGE"
 
 # Root attributes the zarr-creator writes on the source. They describe
 # the input, so they are copied under a `source_` prefix.
@@ -110,6 +116,15 @@ def _package_version():
     except PackageNotFoundError:  # pragma: no cover - editable checkouts
         logger.debug("leewavenet is not installed; omitting its version")
         return None
+
+
+def _container_image():
+    """The image this run happened in, or None outside a container."""
+    image = os.environ.get(IMAGE_ENV_VAR, "").strip()
+    if not image:
+        logger.debug(f"{IMAGE_ENV_VAR} is unset; omitting the image")
+        return None
+    return image
 
 
 def _grid_mapping_name(source):
@@ -243,6 +258,9 @@ def _history_entry(source_url=None):
     )
     installed = _package_version()
     tool = f"leewavenet {installed}" if installed else "leewavenet"
+    image = _container_image()
+    if image:
+        tool = f"{tool} (image {image})"
     entry = f"{stamp}: {tool} inference"
     return f"{entry} on {source_url}" if source_url else entry
 
@@ -261,6 +279,10 @@ def _global_attrs(predictions, source=None, source_url=None):
     installed = _package_version()
     if installed:
         attrs["leewavenet_version"] = installed
+
+    image = _container_image()
+    if image:
+        attrs["container_image"] = image
 
     if source_url:
         attrs["source_dataset"] = str(source_url)
