@@ -307,7 +307,7 @@ def test_orientation_convention_is_documented(written):
     ds = xr.open_zarr(written)
     comment = ds["orientation"].attrs["comment"]
 
-    assert "anticlockwise from geographic east" in comment
+    assert "relative to the grid's positive x-axis" in comment
     # It is an axis, ambiguous by 180 degrees, not a direction.
     assert "180" in comment
 

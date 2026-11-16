@@ -89,7 +89,7 @@ PREDICTION_ATTRS = {
         "units": "degree",
         "comment": (
             "Orientation of the detected trapped lee wave pattern, "
-            "measured anticlockwise from geographic east. The model "
+            "measured relative to the grid's positive x-axis. The model "
             "returns an arctangent, so the value lies in (-90, 90) "
             "degrees and defines an axis rather than a direction: an "
             "orientation and that orientation plus 180 degrees "

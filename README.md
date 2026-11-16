@@ -133,8 +133,8 @@ The outputs include:
 Outside the detected waves, `wavelength`, `orientation` and `amplitude`
 are NaN.
 
-`orientation` is measured anticlockwise from geographic east and the
-model returns an arctangent, so it lies in (-90, 90) degrees and
+`orientation` is measured relative to the grid's positive x-axis and
+the model returns an arctangent, so it lies in (-90, 90) degrees and
 describes an **axis**, not a direction: an orientation and that
 orientation plus 180 degrees mean the same thing. The `comment`
 attribute on the variable says so too.
