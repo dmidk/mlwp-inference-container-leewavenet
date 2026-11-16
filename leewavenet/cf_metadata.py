@@ -16,6 +16,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 import numpy as np
 from loguru import logger
+from pyproj import CRS
 
 # The CF version the output declares.
 #
@@ -149,12 +150,6 @@ def _grid_mapping_name(source):
 
 def _cf_from_wkt(wkt):
     """The CF grid mapping attributes described by a WKT string."""
-    try:
-        from pyproj import CRS
-    except ImportError:  # pragma: no cover - pyproj is a dependency
-        logger.warning("pyproj is missing; cannot expand crs_wkt")
-        return {}
-
     try:
         attrs = CRS.from_wkt(wkt).to_cf()
     except Exception as error:
