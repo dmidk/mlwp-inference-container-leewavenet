@@ -581,13 +581,14 @@ def test_written_dataset_passes_cf_checker(written, tmp_path):
     )
     checker.checker(str(netcdf))
 
+    def problems(result):
+        return result["FATAL"] + result["ERROR"] + result["WARN"]
+
     errors = {
-        name: result["FATAL"] + result["ERROR"]
+        name: found
         for name, result in checker.results["variables"].items()
-        if result["FATAL"] or result["ERROR"]
+        if (found := problems(result))
     }
-    globals_ = (
-        checker.results["global"]["FATAL"] + checker.results["global"]["ERROR"]
-    )
-    assert not errors, f"CF errors in variables: {errors}"
-    assert not globals_, f"global CF errors: {globals_}"
+    globals_ = problems(checker.results["global"])
+    assert not errors, f"CF errors or warnings in variables: {errors}"
+    assert not globals_, f"global CF errors or warnings: {globals_}"
