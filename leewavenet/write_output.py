@@ -16,6 +16,31 @@ def _storage_options(url, storage_options=None):
     return {**options, **(storage_options or {})}
 
 
+def reset_encoding(ds):
+    """Drop the encodings inherited from the source Zarr.
+
+    The source chunks and compressors no longer match the output arrays,
+    so they go. Two encodings are set deliberately instead of cleared:
+
+    - `_FillValue` is suppressed on the floating-point variables. JSON
+      has no NaN, so xarray writes the attribute as a base64 blob that
+      no CF reader can interpret, and CF requires `_FillValue` to have
+      the type of its variable. The Zarr fill value stays "NaN", which
+      Zarr v3 does encode, so missing values still round-trip exactly.
+    - `coordinates: None` is kept where it was set (the grid mapping
+      variable), so the container keeps no coordinates of its own.
+    """
+    ds = ds.copy()
+    for var in ds.variables.values():
+        drop_coordinates = var.encoding.get("coordinates", False) is None
+        var.encoding = {}
+        if drop_coordinates:
+            var.encoding["coordinates"] = None
+        if var.dtype.kind == "f":
+            var.encoding["_FillValue"] = None
+    return ds
+
+
 def write_predictions(ds, destination, storage_options=None):
     """Write the predictions as `predictions.zarr` under `destination`.
 
@@ -26,11 +51,7 @@ def write_predictions(ds, destination, storage_options=None):
     url = _join(destination, "predictions.zarr")
     logger.info(f"Writing predictions to: {url}")
 
-    # Drop encodings inherited from the source Zarr (chunks, compressors),
-    # which no longer match the output arrays
-    ds = ds.copy()
-    for var in ds.variables.values():
-        var.encoding = {}
+    ds = reset_encoding(ds)
 
     mapper = fsspec.get_mapper(url, **_storage_options(url, storage_options))
     ds.to_zarr(mapper, mode="w")
