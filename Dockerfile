@@ -56,6 +56,10 @@ RUN uv run python -c 'import cartopy, cartopy.io.shapereader as shp; \
     [print(shp.natural_earth(scale, "physical", "coastline")) \
      for scale in ["110m", "50m", "10m"]]'
 
+# The image reference, written to the output as `container_image`.
+ARG LEEWAVENET_IMAGE=""
+ENV LEEWAVENET_IMAGE=${LEEWAVENET_IMAGE}
+
 # Set the entry point. Arguments given to `podman run` are passed
 # straight to the leewavenet command.
 ENTRYPOINT ["uv", "run", "leewavenet"]

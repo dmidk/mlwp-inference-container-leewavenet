@@ -212,6 +212,12 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+          # The image reference, written to the output as
+          # `container_image`. Empty when no tag is published (pull
+          # requests, pushes to main), and the attribute is then omitted.
+          build-args: |
+            LEEWAVENET_IMAGE=${{ steps.meta.outputs.tags }}
+
           # Reuse cached Docker layers between builds.
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -18,6 +18,10 @@
 - Pin the dependencies in `uv.lock` (the versions in the rc2 image) and build with `uv sync --locked`, so rebuilding the image gives the same versions; removed the unused `pdm.lock`
 - Build the image on `python:3.12-slim` instead of `pytorch/pytorch`, whose conda PyTorch was unused (uv installs torch and its CUDA libraries from `uv.lock`), and drop the unneeded apt packages: the image shrinks from 14.9 GB to 6.9 GB (8.2 GB to 4.2 GB compressed). `uv sync` runs in three steps so that no layer is larger than ~1.3 GB compressed
 
+- The predictions are written with CF metadata (`leewavenet/cf_metadata.py`), so `predictions.zarr` passes the CF checker with no errors and no warnings. Only attributes change; every predicted value, the chunking, the compression and the output paths are untouched. The root group declares `Conventions = CF-1.8`, the newest version cfchecker 4.1.0 can validate against.
+- Added `pyproj` as a dependency: the grid mapping attributes are derived from the source's `crs_wkt` rather than written out by hand, so the output follows the input grid.
+- Added `tests/`, run by the new `Tests` workflow. They build small synthetic datasets and need neither the models nor S3.
+
 ### Removed
 - Dropped `dmidc[harmonie-grib]` dependency (no longer used by `read_source.py`).
 - Removed redundant/unnecessary pins: `shapely`, `eccodes`, `torchvision`, `pandas`, `pillow`, `scipy`, `fastcore`, `fastdownload`, `fastprogress`, `scikit-learn`, `netcdf4`, `h5py` — all either transitively satisfied by other dependencies or unused after the `dmidc` removal.
@@ -28,6 +32,8 @@
 - Select the 700 hPa level by value instead of by position; on zarr-creator's IG stores position 8 is 500 hPa
 - `--plot` works in the container: the image includes the `plot` extra and the Natural Earth coastlines, and each figure is freed after it is saved
 - Running on a GPU crashed with `AttributeError: device`: the models were saved with an older fastai, and `load_learner` sets the data loaders' device only for the CPU; it's now set for the GPU too
+- The predictions referenced a `grid_mapping` variable that was not in the output: the projection is a sibling data variable in the source, and building the output from `ds.wz` alone left it behind. It is now carried over, with its CF projection parameters, and referenced by every prediction variable
+- `_FillValue` was written as a base64 blob (`AAAAAAAA+H8=`): JSON has no NaN, and CF requires `_FillValue` to have the type of its variable. The attribute is no longer written; the Zarr fill value carries `NaN`, which Zarr v3 encodes properly and xarray still decodes to NaN
 
 ### Added
 - Add `units` to `wavelength` (km), `orientation` (degree) and `amplitude` (m s-1) in the output
