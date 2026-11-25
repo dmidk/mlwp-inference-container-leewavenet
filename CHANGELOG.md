@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [rc5]
 
 ### Changed
 - Updated documentation.
